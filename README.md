@@ -1,1 +1,1 @@
-R Markdown tutorial during Rynearson Lab Meeting.
+R Markdown tutorial for Rynearson Lab Meeting.
