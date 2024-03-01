@@ -1,0 +1,237 @@
+---
+title: "R Markdown Tutorial"
+author: "Setta"
+date: "Last compiled on `r format(Sys.time(), '%dth %b %Y')`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Goal: 
+
+This RMarkdown tutorial will walk through different components of an R Markdown file and how to process data, create figures and save in one pdf or html file with notes and observations.
+
+## General Notes about R poject & R Markdown Files:
+
+### R projects:
+Opening the R project file (R_MarkdownTutorial) I created or creating your own R project file will allow you to save figures, data, and output files for later use and sharing with others.
+
+In the R project R Markdown Tutorial there is an example dataset (ExampleData.csv), a picture to add to the R Markdown file (this can be a .jpg or.png format) and the R Markdown File we will be working with.
+
+### R Markdown files:
+
+R markdown files are an easy way to take notes during data analysis including online tutorials you are working with, observations, and results. These will be saved as an output file of your choosing (html or pdf). Afterwards, you will have your data analysis methods stored in one file along with figures you produced during data analysis. 
+
+Notice at the top of this file we've saved the name of the R markdown file, the creator of the file and the date it was last compiled (to html or pdf format).
+
+R markdown works by creating code chunks in between text in your script. You will notice the R markdown chunks by the ``` and curly brackets at the begining of a set of code. Here we are using r code, so you will see an r after the brackets but you can insert other types of code. If you just want to run a chunk of code before compiling, press the play button in the top right hand corner.
+
+You can format text in between code chunks by changing the headers using the hash mark before text. The more hash marks indicate subheadings. 
+
+You can also create bullet points with asteriks and numbered lists. Below is an example of what I generally keep in an R markdown file during data analysis.
+
+*Note* When you open a new R markdown file a short set of instructions is included, like the following:
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Set working directory:
+
+The r code below sets the working directory and the knitr settings to wrap text in the ouput file. Notice we've added include=FALSE to the brackets, therefore this code chunk is not included in the R markdown file.
+
+```{r setup, include=FALSE}
+# Working directory should already be set in the project folder, but in case it's not change line below to set the wd for the project folder. Change the path if your folder is stored elsewhere.
+
+# setwd(G:/Shared drives/Rynearson Lab/Scripts/R Markdown Tutorial/R Markdown Tutorial)
+
+# make sure text is wrapping in final knitr output:
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+```
+
+## Description of data and project:
+
+### Dataset description:
+
+Today we will be working with made up data (ExampleData.csv) for my diatom-diazotroph experiment growing cultures in three treatment types:
+
+* WNH - 10 uM Ammonium
+* WNO - 10 uM Nitrate
+* CON - no added nitrate/ammonium
+
+Notice the above list will create bullet points in your output file. Make sure to include an empty line between the bulleted list and the text above.
+
+The example data also has two timepoints:
+
+1) Initial Timepoint (T0)
+2) Final Timepoint (TF)
+
+Notice the above will produce a numbered list. Make sure to include an empty line between the list and the text above.
+
+### Goal of analysis:
+
+We are comparing the fluorescence and cell counts of the DDA for the final timepoint to see if they differ across treatments.
+
+R markdown files also allows you to include images in case you have notes or calculations you'd like to keep with the associated code. 
+
+Here we are using a dataset for the DDA *Hemiaulus-Richelia* a diatom host (*Hemiaulus hauckii*) and nitrogen fixing cyanobacterial symbiont (*Richelia intracellularis*), seen in the image below.
+
+Removed image to publish script on github.
+ 
+ The text inside the square brackets gives a caption to the image file included in parentheses.
+
+### Load libraries
+
+The r code below loads libraries needed for this tutorial. I also like into include a code chunk at the end to list of the version of the packages I'm using to make the methods write up for my manuscript easier.
+
+```{r message=FALSE, warning=FALSE}
+# list of packages to install in case you don't have them.
+# install.packages("BiocManager")
+# BiocManager::install(c("tidyverse", "knitr", "ggplot2", "viridis", "kableExtra", "dplyr", "ggsci"))
+# load packages:
+library("tidyverse")
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("dplyr")
+library("ggsci")
+```
+
+Chunk output can be customized with knitr options, arguments set in the {} of a chunk header. Above, we use five arguments:
+
+* include = FALSE prevents code and results from appearing in the finished file. R Markdown still runs the code in the chunk, and the results can be used by other chunks.
+* echo = FALSE prevents code, but not the results from appearing in the finished file. This is a useful way to embed figures.
+* message = FALSE prevents messages that are generated by code from appearing in the finished file.
+* warning = FALSE prevents warnings that are generated by code from appearing in the finished.
+* fig.cap = "..." adds a caption to graphical results.
+
+See the [R Markdown Reference Guide](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf) for a complete list of knitr chunk options.
+
+
+### Load Data
+
+```{r warning=FALSE, message=FALSE}
+# read in data
+DDA_CellCounts_RFU <- read_csv("ExampleData.csv")
+
+# Change Flask, Timepoint, and Treatment to factors:
+DDA_CellCounts_RFU$Flask<-as.factor(DDA_CellCounts_RFU$Flask)
+DDA_CellCounts_RFU$Timepoint<-as.factor(DDA_CellCounts_RFU$Timepoint)
+DDA_CellCounts_RFU$Treatment<-as.factor(DDA_CellCounts_RFU$Treatment)
+
+# change order of Treatments:
+DDA_CellCounts_RFU$Treatment<-factor(DDA_CellCounts_RFU$Treatment, levels=c("CON","WNH","WNO"))
+
+# Keep only the final timepoint:
+DDA_Final<-DDA_CellCounts_RFU %>%
+  filter(Timepoint=="TF")
+```
+
+### Cell Count Statistics & Figure:
+
+Compare cell counts between treatment at the final timepoint:
+
+```{r warning=FALSE}
+# Host Cell Summary:
+group_by(DDA_Final, Treatment) %>%
+  summarise(
+    mean = mean(CellCount_permL, na.rm = TRUE),
+    sd = sd(CellCount_permL, na.rm = TRUE)
+ )
+
+# Compute the analysis of variance
+Counts.aov <- aov(CellCount_permL ~ Treatment, data = DDA_Final)
+# Summary of the analysis
+summary(Counts.aov)
+# Multiple comparison to see which group is significant:
+TukeyHSD(Counts.aov)
+
+```
+
+When creating chunks of code in r markdown to use with figures, you need to make sure to change the figure numbers for each. If you accidentally include two of the same figure numbers the R code won't compile.
+
+```{r  fig1, fig.height=7, fig.width=9, echo=FALSE, warning=FALSE, results="hide"}
+ggplot(DDA_Final, aes(x=Treatment, y=CellCount_permL, fill=Treatment)) +
+  geom_boxplot(aes(fill=Treatment), color="black", position = position_dodge(0.85)) +
+  stat_boxplot(geom = "errorbar", width = 0.1, position=position_dodge(0.85)) + 
+  geom_point(alpha=0.3, position=position_dodge(0.85)) +
+   scale_fill_manual(values=c("#0072B5FF","#E18727FF","#BC3C29FF"),
+                     breaks=c("CON", "WNH", "WNO"),
+                     labels=c("No N", "10 uM NH4", "10 uM NO3")) +
+  ggtitle("") +
+  labs(x="Timepoint", y="Host Cells per mL") +
+  theme_bw() +
+  annotate("text", x="CON",y =3600, label = "a", size=5.5) +
+  annotate("text", x="WNH",y =4600, label = "b", size=5.5) +
+  annotate("text", x="WNO",y =3600, label = "a", size=5.5) +
+  annotate("text", x="WNO",y =4600, label = "p=7.62e-07", size=5.5) +
+  theme(axis.text=element_text(size=18),
+        axis.title=element_text(size=20),
+        strip.text.x = element_text(size = 18),
+        axis.text.x = element_text(angle = 45, hjust=1),
+        text = element_text(size=20))
+```
+
+### RFU Statistics & Figure:
+
+Compare cell counts between treatment at the final timepoint:
+
+```{r warning=FALSE}
+# Host Cell Summary:
+group_by(DDA_Final, Treatment) %>%
+  summarise(
+    mean = mean(RFU_Turner, na.rm = TRUE),
+    sd = sd(RFU_Turner, na.rm = TRUE)
+ )
+
+# Compute the analysis of variance
+RFU.aov <- aov(RFU_Turner ~ Treatment, data = DDA_Final)
+# Summary of the analysis
+summary(RFU.aov)
+# Multiple comparison to see which group is significant:
+TukeyHSD(RFU.aov)
+
+```
+
+When creating chunks of code in r markdown to use with figures, you need to make sure to change the figure numbers for each. If you accidentally include two of the same figure numbers the R code won't compile.
+
+```{r  fig2, fig.height=7, fig.width=9, echo=FALSE, warning=FALSE, results="hide"}
+ggplot(DDA_Final, aes(x=Treatment, y=RFU_Turner, fill=Treatment)) +
+  geom_boxplot(aes(fill=Treatment), color="black", position = position_dodge(0.85)) +
+  stat_boxplot(geom = "errorbar", width = 0.1, position=position_dodge(0.85)) + 
+  geom_point(alpha=0.3, position=position_dodge(0.85)) +
+   scale_fill_manual(values=c("#0072B5FF","#E18727FF","#BC3C29FF"),
+                     breaks=c("CON", "WNH", "WNO"),
+                     labels=c("No N", "10 uM NH4", "10 uM NO3")) +
+  ggtitle("") +
+  labs(x="Timepoint", y="Host Cells per mL") +
+  theme_bw() +
+  annotate("text", x="CON",y =9.5, label = "a", size=5.5) +
+  annotate("text", x="WNH",y =12.2, label = "b", size=5.5) +
+  annotate("text", x="WNO",y =9.5, label = "a", size=5.5) +
+  annotate("text", x="WNO",y =12.2, label = "p=6.65e-06", size=5.5) +
+  theme(axis.text=element_text(size=18),
+        axis.title=element_text(size=20),
+        strip.text.x = element_text(size = 18),
+        axis.text.x = element_text(angle = 45, hjust=1),
+        text = element_text(size=20))
+```
+
+## Conclusions:
+
+Growth is significantly different in the added ammonium treatment (WNH) compared to the control and added nitrate treatments. 
+
+Next Steps: Were the cells able to take up added nutrients?
+
+
+### Version of packages used for this R markdown tutorial:
+
+```{r}
+packageVersion("rlang")
+packageVersion("tidyverse")
+packageVersion("geosphere")
+packageVersion("knitr")
+packageVersion("ggplot2")
+packageVersion("viridis")
+packageVersion("kableExtra")
+packageVersion("dplyr")
